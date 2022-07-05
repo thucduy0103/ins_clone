@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -13,11 +15,11 @@ class PageViewHome extends StatefulWidget {
 }
 
 class _PageViewHomeState extends State<PageViewHome> {
+  late Future<List<Post>> futurePosts;
+
   FutureBuilder<List<Post>> _buildBody(BuildContext context) {
-    final client =
-        RestClient(Dio(BaseOptions(contentType: "application/json")));
     return FutureBuilder<List<Post>>(
-      future: client.getTasks(),
+      future: futurePosts,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
           final List<Post>? posts = snapshot.data;
@@ -29,6 +31,15 @@ class _PageViewHomeState extends State<PageViewHome> {
         }
       },
     );
+  }
+
+  Future<void> _pullRefresh() async {
+    final client =
+        RestClient(Dio(BaseOptions(contentType: "application/json")));
+    List<Post> freshFuturePosts = await client.getTasks();
+    setState(() {
+      futurePosts = Future.value(freshFuturePosts);
+    });
   }
 
   ListView _buildPosts(BuildContext context, List<Post> posts) {
@@ -85,10 +96,21 @@ class _PageViewHomeState extends State<PageViewHome> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    final client =
+        RestClient(Dio(BaseOptions(contentType: "application/json")));
+    // List<Post> freshFuturePosts = await client.getTasks();
+    futurePosts = client.getTasks();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.only(right: 5, left: 5, top: 5),
-      child: _buildBody(context),
+      // child: _buildBody(context),
+      child:
+          RefreshIndicator(child: _buildBody(context), onRefresh: _pullRefresh),
     );
   }
 }
